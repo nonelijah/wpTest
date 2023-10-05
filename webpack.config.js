@@ -1,9 +1,16 @@
 const path = require("path");
 const webpack = require("webpack");
+const childProcess = require("child_process");
+require("dotenv").config();
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const ImageMinimizerPlugin = require("image-minimizer-webpack-plugin");
 
 // export default 와 같이 모듈을 밖으로 빼내는 Node JS 문법입니다. 엔트리, 아웃풋 그리고 번들링 모드를 설정할 수 있습니다.
 module.exports = {
-    mode: "development",
+    // mode: "development",
+    // mode: "production",
+    mode: process.env.NODE_ENV === "development" ? "development" : "production",
 
     entry: {
         main: path.resolve("./src/app.js"),
@@ -38,11 +45,39 @@ module.exports = {
     },
     plugins: [
         new webpack.BannerPlugin({
-            //toLocaleString : 날짜의 문자열 표현을 지역의 언어에 맞는 형식으로 반환합니다.
-            banner:
-                "마지막 빌드 시간은 " +
-                new Date().toLocaleString() +
-                " 입니다.",
+            banner: `
+            Commit Version : ${childProcess.execSync(
+                "git rev-parse --short HEAD"
+            )}
+            Committer : ${childProcess.execSync("git config user.name")}
+            마지막 빌드 시간 : ${new Date().toLocaleString()}
+            `,
         }),
+        new webpack.DefinePlugin({
+            // pw: 123455,
+            dev: JSON.stringify(process.env.DEV_API),
+            pro: JSON.stringify(process.env.PRO_API),
+        }),
+        new HtmlWebpackPlugin({
+            template: "./index.html",
+        }),
+        new CleanWebpackPlugin(),
     ],
+    optimization: {
+        // 이미지 압축 작업을 실행할지 결정합니다.
+        minimize: true,
+        minimizer: [
+            new ImageMinimizerPlugin({
+                test: /\.(jpe?g|png|gig|svg)/i,
+                minimizer: {
+                    implementation: ImageMinimizerPlugin.imageminMinify,
+                    options: {
+                        plugins: [
+                            ["imagemin-optipng", { optimizationLevel: 3 }],
+                        ],
+                    },
+                },
+            }),
+        ],
+    },
 };
